@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>pro-grammer-SD | Coffee & Code</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;700&family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Nunito', 'sans-serif'],
+              display: ['Comfortaa', 'cursive'],
+            },
+            colors: {
+              coffee: {
+                50: '#fdf8f6',
+                100: '#f2e8e5',
+                200: '#eaddd7',
+                300: '#e0cec7',
+                400: '#d2bab0',
+                500: '#a77f72', // Light Roast
+                600: '#8a5a4d', // Medium Roast
+                700: '#6f453b', // Dark Roast
+                800: '#4e302a', // Espresso
+                900: '#2b1a17', // Black Coffee
+                950: '#1a100e', // Burnt / Dark Mode Bg
+              },
+              cream: '#fffdd0',
+            },
+            typography: (theme) => ({
+              DEFAULT: {
+                css: {
+                  color: theme('colors.coffee.800'),
+                  a: {
+                    color: theme('colors.coffee.600'),
+                    '&:hover': {
+                      color: theme('colors.coffee.900'),
+                    },
+                  },
+                  h1: { color: theme('colors.coffee.900') },
+                  h2: { color: theme('colors.coffee.900') },
+                  h3: { color: theme('colors.coffee.900') },
+                  h4: { color: theme('colors.coffee.900') },
+                  strong: { color: theme('colors.coffee.900') },
+                  code: { color: theme('colors.coffee.700') },
+                  blockquote: { borderLeftColor: theme('colors.coffee.300') },
+                },
+              },
+              invert: {
+                 css: {
+                    color: theme('colors.coffee.100'),
+                    a: {
+                      color: theme('colors.coffee.300'),
+                      '&:hover': {
+                        color: theme('colors.coffee.100'),
+                      },
+                    },
+                    h1: { color: theme('colors.coffee.50') },
+                    h2: { color: theme('colors.coffee.50') },
+                    h3: { color: theme('colors.coffee.50') },
+                    strong: { color: theme('colors.coffee.200') },
+                 }
+              }
+            }),
+          }
+        },
+        plugins: [
+            function({ addUtilities }) {
+                addUtilities({
+                    '.text-shadow': {
+                        'text-shadow': '2px 2px 4px rgba(0, 0, 0, 0.1)',
+                    },
+                })
+            }
+        ]
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "framer-motion": "https://esm.sh/framer-motion@^12.23.26",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "remark-gfm": "https://esm.sh/remark-gfm@^4.0.0",
+    "rehype-raw": "https://esm.sh/rehype-raw@^7.0.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  }
+}
+</script>
+</head>
+  <body class="bg-coffee-50 dark:bg-coffee-950 text-coffee-900 dark:text-coffee-100 antialiased selection:bg-coffee-300 selection:text-coffee-900 transition-colors duration-500">
+    <div id="root"></div>
+  </body>
+</html>
