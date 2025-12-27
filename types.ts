@@ -21,11 +21,12 @@ export interface GitHubRepo {
   language: string | null;
   stargazers_count: number;
   forks_count: number;
+  open_issues_count: number;
   updated_at: string;
   topics: string[];
   clone_url: string;
   default_branch: string;
-  repoImage?: string; // Social preview from pinned API
+  repoImage?: string; // Social preview image URL
 }
 
 export interface CoffeeStats {

@@ -1,7 +1,7 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { X, Activity, AlertCircle } from 'lucide-react';
+import { X, Activity, AlertCircle, Info, Coffee, Clock, Zap } from 'lucide-react';
 import { GitHubRepo } from '../types';
 import { fetchRepoParticipation } from '../services/githubService';
 
@@ -17,19 +17,30 @@ const RepoStatsModal: React.FC<RepoStatsModalProps> = ({ repo, onClose }) => {
   useEffect(() => {
     let mounted = true;
     const loadStats = async () => {
-      // Small delay to allow animation to start smoothly
-      await new Promise(r => setTimeout(r, 300));
-      const stats = await fetchRepoParticipation(repo.name);
-      if (mounted) {
-        setData(stats);
-        setLoading(false);
+      setLoading(true);
+      try {
+        const stats = await fetchRepoParticipation(repo.name);
+        if (mounted) {
+          setData(stats);
+          setLoading(false);
+        }
+      } catch (e) {
+        if (mounted) setLoading(false);
       }
     };
     loadStats();
     return () => { mounted = false; };
   }, [repo.name]);
 
-  const maxCommit = data ? Math.max(...data.all, 1) : 1;
+  const { maxCommit, totalCommits, hasActivity } = useMemo(() => {
+    if (!data || !data.all) return { maxCommit: 1, totalCommits: 0, hasActivity: false };
+    const total = data.all.reduce((a, b) => a + b, 0);
+    return {
+      maxCommit: Math.max(...data.all, 1),
+      totalCommits: total,
+      hasActivity: total > 0
+    };
+  }, [data]);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -38,94 +49,140 @@ const RepoStatsModal: React.FC<RepoStatsModalProps> = ({ repo, onClose }) => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-coffee-950/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-coffee-950/85 backdrop-blur-md"
       />
       
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-2xl bg-white dark:bg-coffee-900 rounded-[2.5rem] shadow-2xl overflow-hidden border border-coffee-200 dark:border-coffee-700"
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative w-full max-w-2xl bg-white dark:bg-coffee-900 rounded-[3rem] shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden border border-coffee-200/50 dark:border-coffee-700/50"
       >
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-coffee-400 to-coffee-800" />
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-coffee-400 via-coffee-600 to-coffee-800" />
         
-        <div className="p-8">
+        <div className="p-8 sm:p-10">
             <div className="flex justify-between items-start mb-8">
                 <div>
-                    <div className="flex items-center gap-2 text-coffee-600 dark:text-coffee-300 mb-1">
-                        <Activity size={18} />
-                        <span className="text-xs font-black uppercase tracking-widest">Contribution Analysis</span>
+                    <div className="flex items-center gap-2 text-coffee-500 dark:text-coffee-400 mb-1">
+                        <Activity size={16} className="animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Caffeine Levels & Output</span>
                     </div>
-                    <h3 className="text-3xl font-display font-black text-coffee-950 dark:text-coffee-50">{repo.name}</h3>
+                    <h3 className="text-3xl sm:text-4xl font-display font-black text-coffee-950 dark:text-coffee-50 leading-none">
+                      {repo.name}
+                    </h3>
                 </div>
                 <button 
                     onClick={onClose}
-                    className="p-2 rounded-full hover:bg-coffee-100 dark:hover:bg-coffee-800 transition-colors text-coffee-500"
+                    className="p-3 rounded-full bg-coffee-50 dark:bg-coffee-800/50 text-coffee-400 hover:text-coffee-900 dark:hover:text-white transition-all active:scale-90"
                 >
-                    <X size={24} />
+                    <X size={20} />
                 </button>
             </div>
 
-            <div className="min-h-[250px] flex items-center justify-center bg-coffee-50 dark:bg-coffee-950/50 rounded-3xl border border-coffee-100 dark:border-coffee-800 p-6 relative">
+            <div className="min-h-[280px] flex flex-col bg-coffee-50/50 dark:bg-black/20 rounded-[2rem] border border-coffee-100 dark:border-coffee-800/50 p-6 sm:p-8 relative">
                 {loading ? (
-                    <div className="flex flex-col items-center gap-3">
-                        <div className="w-8 h-8 border-4 border-coffee-300 border-t-coffee-800 rounded-full animate-spin" />
-                        <span className="text-xs font-bold text-coffee-400 animate-pulse">BREWING DATA...</span>
-                    </div>
-                ) : data ? (
-                    <div className="w-full h-full flex flex-col">
-                        <div className="flex-1 flex items-end justify-between gap-1 w-full h-48 pt-4">
-                            {data.all.map((count, i) => (
-                                <div key={i} className="flex-1 flex flex-col justify-end group relative">
-                                    <motion.div
-                                        initial={{ height: 0 }}
-                                        animate={{ height: `${(count / maxCommit) * 100}%` }}
-                                        transition={{ duration: 0.5, delay: i * 0.01 }}
-                                        className="w-full min-w-[4px] bg-coffee-300 dark:bg-coffee-700 rounded-t-sm hover:bg-coffee-600 dark:hover:bg-coffee-400 transition-colors relative"
-                                    >
-                                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-coffee-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 font-bold shadow-lg transition-opacity">
-                                            {count} commits
-                                         </div>
-                                    </motion.div>
-                                </div>
-                            ))}
+                    <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                        <div className="relative">
+                          <div className="w-12 h-12 border-4 border-coffee-200 dark:border-coffee-800 border-t-coffee-700 dark:border-t-coffee-400 rounded-full animate-spin" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Coffee size={14} className="text-coffee-700 dark:text-coffee-400" />
+                          </div>
                         </div>
-                        <div className="mt-4 flex justify-between text-[10px] font-black uppercase tracking-widest text-coffee-400 border-t border-coffee-200 dark:border-coffee-800 pt-2">
-                            <span>52 Weeks Ago</span>
-                            <span>Today</span>
+                        <span className="text-[10px] font-black text-coffee-400 uppercase tracking-[0.3em] animate-pulse">Grinding Yearly Stats...</span>
+                    </div>
+                ) : data && hasActivity ? (
+                    <div className="w-full flex-1 flex flex-col">
+                        <div className="flex-1 flex items-end justify-between gap-[2px] sm:gap-1 w-full h-40 pt-4 px-1">
+                            {data.all.map((count, i) => {
+                                const heightPercent = (count / maxCommit) * 100;
+                                return (
+                                    <div key={i} className="flex-1 flex flex-col justify-end group relative h-full">
+                                        <motion.div
+                                            initial={{ height: 0 }}
+                                            animate={{ height: `${Math.max(heightPercent, count > 0 ? 5 : 0)}%` }}
+                                            transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1], delay: i * 0.008 }}
+                                            className={`w-full rounded-full transition-all relative overflow-hidden ${
+                                              count > 0 
+                                              ? 'bg-gradient-to-t from-coffee-800 via-coffee-600 to-coffee-400 dark:from-coffee-500 dark:via-coffee-400 dark:to-coffee-300' 
+                                              : 'bg-coffee-200/30 dark:bg-coffee-800/20'
+                                            }`}
+                                        >
+                                            {count > 0 && (
+                                              <motion.div 
+                                                animate={{ opacity: [0.3, 0.6, 0.3], y: [0, -10, 0] }}
+                                                transition={{ duration: 2, repeat: Infinity }}
+                                                className="absolute inset-0 bg-white/20 blur-sm"
+                                              />
+                                            )}
+                                        </motion.div>
+                                        
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-1.5 bg-coffee-950 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-20 font-black shadow-2xl transition-all translate-y-2 group-hover:translate-y-0 border border-coffee-800">
+                                            <span className="text-coffee-400 mr-2">WEEK {52 - i}:</span>
+                                            {count} {count === 1 ? 'COMMIT' : 'COMMITS'}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-6 flex justify-between items-center text-[9px] font-black uppercase tracking-[0.2em] text-coffee-400/70 pt-4 border-t border-coffee-200/50 dark:border-coffee-800/50">
+                            <span className="flex items-center gap-1.5"><Clock size={10} /> 12 MONTHS AGO</span>
+                            <div className="flex gap-4">
+                               <div className="flex items-center gap-1.5">
+                                 <div className="w-2 h-2 rounded-full bg-coffee-500" />
+                                 <span>ACTIVITY</span>
+                               </div>
+                            </div>
+                            <span>PRESENT DAY</span>
                         </div>
                     </div>
                 ) : (
-                    <div className="text-center text-coffee-400">
-                        <AlertCircle size={32} className="mx-auto mb-2 opacity-50" />
-                        <p className="text-sm font-bold">No activity data available for this brew.</p>
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+                        <div className="w-16 h-16 bg-coffee-100 dark:bg-coffee-800/50 rounded-full flex items-center justify-center mb-4">
+                          <AlertCircle size={32} className="text-coffee-300 dark:text-coffee-600" />
+                        </div>
+                        <h4 className="text-coffee-900 dark:text-coffee-100 font-bold mb-1">Cold Brew Alert</h4>
+                        <p className="text-coffee-500 dark:text-coffee-400 text-xs max-w-[200px] leading-relaxed">
+                            {data ? "No activity recorded in the last 52 weeks. Time for a fresh batch?" : "GitHub is still preparing these metrics. Please try again in a few minutes."}
+                        </p>
+                        {data && (
+                           <button onClick={onClose} className="mt-6 px-6 py-2 bg-coffee-800 dark:bg-coffee-100 text-white dark:text-coffee-900 rounded-full text-[10px] font-black uppercase tracking-widest">
+                             Got it
+                           </button>
+                        )}
                     </div>
                 )}
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-4">
-                 <div className="p-4 bg-coffee-100/50 dark:bg-coffee-800/30 rounded-2xl flex items-center gap-4">
-                    <div className="p-3 bg-white dark:bg-coffee-800 rounded-xl shadow-sm text-coffee-600 dark:text-coffee-300">
-                        <Activity size={20} />
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <div className="p-6 bg-coffee-50 dark:bg-coffee-900/40 rounded-3xl border border-coffee-100 dark:border-coffee-800/50 flex items-center gap-5 transition-transform hover:scale-[1.02]">
+                    <div className="w-12 h-12 flex-shrink-0 bg-white dark:bg-coffee-800 rounded-2xl shadow-sm flex items-center justify-center text-coffee-600 dark:text-coffee-400">
+                        <Activity size={24} />
                     </div>
                     <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-coffee-400">Total Commits (1yr)</div>
-                        <div className="text-xl font-black text-coffee-900 dark:text-white">
-                            {data ? data.all.reduce((a, b) => a + b, 0) : '-'}
+                        <div className="text-[10px] font-black uppercase tracking-widest text-coffee-400 mb-0.5">Yearly Output</div>
+                        <div className="text-2xl font-black text-coffee-950 dark:text-white leading-none">
+                            {loading ? '...' : totalCommits} <span className="text-xs text-coffee-400 font-medium">commits</span>
                         </div>
                     </div>
                  </div>
-                 <div className="p-4 bg-coffee-100/50 dark:bg-coffee-800/30 rounded-2xl flex items-center gap-4">
-                    <div className="p-3 bg-white dark:bg-coffee-800 rounded-xl shadow-sm text-coffee-600 dark:text-coffee-300">
-                        <Activity size={20} />
+                 <div className="p-6 bg-coffee-50 dark:bg-coffee-900/40 rounded-3xl border border-coffee-100 dark:border-coffee-800/50 flex items-center gap-5 transition-transform hover:scale-[1.02]">
+                    <div className="w-12 h-12 flex-shrink-0 bg-white dark:bg-coffee-800 rounded-2xl shadow-sm flex items-center justify-center text-coffee-600 dark:text-coffee-400">
+                        <Zap size={24} />
                     </div>
                     <div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-coffee-400">Avg. Weekly</div>
-                        <div className="text-xl font-black text-coffee-900 dark:text-white">
-                            {data ? Math.round(data.all.reduce((a, b) => a + b, 0) / 52) : '-'}
+                        <div className="text-[10px] font-black uppercase tracking-widest text-coffee-400 mb-0.5">Average Roast</div>
+                        <div className="text-2xl font-black text-coffee-950 dark:text-white leading-none">
+                            {loading ? '...' : (totalCommits / 52).toFixed(1)} <span className="text-xs text-coffee-400 font-medium">p/wk</span>
                         </div>
                     </div>
                  </div>
+            </div>
+            
+            <div className="mt-6 flex items-center gap-2 px-4 py-3 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl">
+              <Info size={14} className="text-blue-500 flex-shrink-0" />
+              <p className="text-[10px] text-blue-700 dark:text-blue-300 font-medium leading-tight">
+                Activity includes all commits made to this repository across all branches in the past year.
+              </p>
             </div>
         </div>
       </motion.div>

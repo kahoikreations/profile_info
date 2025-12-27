@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Coffee, Github, Home, Package, Sun, Moon, Users, Menu, X, RefreshCw, BarChart3 } from 'lucide-react';
+import { Coffee, Github, Home, Sun, Moon, Users, Menu, X, RefreshCw, BarChart3, Loader2 } from 'lucide-react';
 import { GitHubUser } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -11,32 +11,11 @@ interface NavbarProps {
   currentView: 'home' | 'followers' | 'stats';
   setView: (view: 'home' | 'followers' | 'stats') => void;
   onRefresh: () => void;
-  isUsingCache?: boolean;
+  isRefreshing?: boolean;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user, isDark, toggleTheme, currentView, setView, onRefresh, isUsingCache }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, isDark, toggleTheme, currentView, setView, onRefresh, isRefreshing }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await onRefresh();
-    setTimeout(() => setIsRefreshing(false), 1000); 
-  };
-
-  const scrollToSection = (id: string) => {
-    setIsMobileMenuOpen(false);
-    if (currentView !== 'home') {
-        setView('home');
-        setTimeout(() => {
-             const element = document.getElementById(id);
-             if (element) element.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-    } else {
-        const element = document.getElementById(id);
-        if (element) element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   const handleSetView = (view: 'home' | 'followers' | 'stats') => {
       setView(view);
@@ -88,9 +67,16 @@ const Navbar: React.FC<NavbarProps> = ({ user, isDark, toggleTheme, currentView,
             
             <div className="h-6 w-px bg-coffee-200 dark:bg-coffee-800 hidden sm:block mx-2" />
 
-            <button onClick={handleRefresh} className="p-2.5 rounded-full text-coffee-600 dark:text-coffee-300 hover:bg-coffee-100 dark:hover:bg-coffee-800 transition-colors relative">
-                <RefreshCw size={20} className={isRefreshing ? 'animate-spin' : ''} />
-                {isUsingCache && <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full animate-pulse" />}
+            <button 
+              disabled={isRefreshing}
+              onClick={onRefresh} 
+              className="p-2.5 rounded-full text-coffee-600 dark:text-coffee-300 hover:bg-coffee-100 dark:hover:bg-coffee-800 transition-colors relative disabled:opacity-50"
+            >
+                {isRefreshing ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={20} />
+                )}
             </button>
 
             <button onClick={(e) => toggleTheme(e)} className="p-2.5 rounded-full text-coffee-600 dark:text-coffee-300 hover:bg-coffee-100 dark:hover:bg-coffee-800 transition-colors">

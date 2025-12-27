@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, GitFork, GitBranch, ChevronDown, Check, Pin, Tag, ExternalLink, Terminal, BarChart2, Coffee, Image as ImageIcon } from 'lucide-react';
+import { Star, GitFork, GitBranch, ChevronDown, Check, Pin, Tag, ExternalLink, Terminal, BarChart2, Coffee, CircleDot } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -64,15 +64,15 @@ const RepoCard: React.FC<RepoCardProps> = ({ repo, isPinned = false, tag }) => {
             : 'border-coffee-200 dark:border-coffee-800 bg-coffee-50 dark:bg-coffee-950/40 shadow-xl'
         }`}
       >
-        {/* Social Preview Image for Pinned Repos from openGraphImageUrl */}
-        {isPinned && repo.repoImage && (
+        {/* Social Preview Image with subtle zoom effect */}
+        {repo.repoImage && (
           <div className="relative h-44 sm:h-52 overflow-hidden">
             <img 
               src={repo.repoImage} 
               alt={repo.name} 
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-coffee-100/95 dark:from-coffee-900/95 to-transparent" />
+            <div className={`absolute inset-0 bg-gradient-to-t to-transparent ${isPinned ? 'from-coffee-100/95 dark:from-coffee-900/95' : 'from-coffee-50 dark:from-coffee-950/80'}`} />
           </div>
         )}
 
@@ -80,11 +80,13 @@ const RepoCard: React.FC<RepoCardProps> = ({ repo, isPinned = false, tag }) => {
           <div className="p-6 sm:p-10 pb-6 flex flex-col h-full">
             <div className="flex justify-between items-start mb-4 sm:mb-6">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                    <GitBranch size={18} className="text-coffee-600 dark:text-coffee-400 flex-shrink-0" />
-                    <h3 className="font-display font-bold text-xl sm:text-2xl text-coffee-900 dark:text-coffee-100 group-hover:text-coffee-700 dark:group-hover:text-coffee-300 transition-colors truncate">
-                      {repo.name}
-                    </h3>
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                        <GitBranch size={18} className="text-coffee-600 dark:text-coffee-400 flex-shrink-0" />
+                        <h3 className="font-display font-bold text-xl sm:text-2xl text-coffee-900 dark:text-coffee-100 group-hover:text-coffee-700 dark:group-hover:text-coffee-300 transition-colors truncate">
+                          {repo.name}
+                        </h3>
+                    </div>
                 </div>
                 
                 <div className="flex flex-wrap gap-2 mt-4">
@@ -118,17 +120,22 @@ const RepoCard: React.FC<RepoCardProps> = ({ repo, isPinned = false, tag }) => {
                 {repo.description || "A smooth, undocumented blend of pure code."}
             </p>
 
-            <div className="flex items-center gap-6 sm:gap-8 mb-8 sm:mb-10">
-                <div className="flex items-center gap-2">
-                    <Star size={18} className="text-coffee-600 dark:text-coffee-400" />
-                    <span className="font-bold text-sm sm:text-base text-coffee-800 dark:text-coffee-200">{repo.stargazers_count}</span>
+            {/* Metrics Row: Stars, Forks, and Issues (The requested concentric icon) */}
+            <div className="flex items-center gap-5 sm:gap-6 mb-8 sm:mb-10">
+                <div className="flex items-center gap-1.5 sm:gap-2 group/stat">
+                    <Star size={16} className="text-coffee-600 dark:text-coffee-400 transition-transform group-hover/stat:scale-110" />
+                    <span className="font-black text-xs sm:text-sm text-coffee-800 dark:text-coffee-200">{repo.stargazers_count}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <GitFork size={18} className="text-coffee-500" />
-                    <span className="font-bold text-sm sm:text-base text-coffee-800 dark:text-coffee-200">{repo.forks_count}</span>
+                <div className="flex items-center gap-1.5 sm:gap-2 group/stat">
+                    <GitFork size={16} className="text-coffee-500 transition-transform group-hover/stat:scale-110" />
+                    <span className="font-black text-xs sm:text-sm text-coffee-800 dark:text-coffee-200">{repo.forks_count}</span>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-2 group/stat">
+                    <CircleDot size={16} className="text-red-500/80 transition-transform group-hover/stat:scale-110" />
+                    <span className="font-black text-xs sm:text-sm text-coffee-800 dark:text-coffee-200">{repo.open_issues_count}</span>
                 </div>
                 <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
-                   <span className="text-[11px] font-black text-coffee-400 uppercase tracking-tighter">{analysis.roast}</span>
+                   <span className="text-[10px] font-black text-coffee-400 uppercase tracking-widest">{analysis.roast}</span>
                 </div>
             </div>
 
