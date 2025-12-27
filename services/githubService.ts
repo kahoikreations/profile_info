@@ -47,6 +47,7 @@ const handleResponse = async (response: Response) => {
   if (!response.ok) {
     if (response.status === 403 || response.status === 429) {
       const resetHeader = response.headers.get('x-ratelimit-reset');
+      // Use the reset timestamp from headers or default to 1 hour from now
       const resetTime = resetHeader ? parseInt(resetHeader, 10) : Math.floor(Date.now() / 1000) + 3600;
       throw new RateLimitError('API Rate Limit Exceeded', resetTime);
     }
