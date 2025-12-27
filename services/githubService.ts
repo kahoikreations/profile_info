@@ -29,6 +29,25 @@ interface PortfolioData {
   timestamp: number;
 }
 
+/**
+ * Helper to construct authentication headers if a GH_TOKEN is provided.
+ * This is crucial for avoiding rate limits in shared environments like Vercel.
+ */
+const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'Accept': 'application/vnd.github.v3+json',
+  };
+  
+  // Try to retrieve token from environment variable
+  const token = typeof process !== 'undefined' ? process.env.GH_TOKEN : null;
+  
+  if (token) {
+    headers['Authorization'] = `token ${token}`;
+  }
+  
+  return headers;
+};
+
 const getCache = (): PortfolioData | null => {
   try {
     const raw = localStorage.getItem(CONFIG.CACHE_KEY);
@@ -88,8 +107,12 @@ const handleResponse = async (response: Response, url: string) => {
 const fetchWithETag = async (url: string) => {
   const cache = getETagCache();
   const cachedItem = cache[url];
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { 
+    ...getAuthHeaders() 
+  };
+  
   if (cachedItem?.etag) headers['if-none-match'] = cachedItem.etag;
+  
   const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
@@ -134,7 +157,7 @@ const fetchTags = async (repoName: string): Promise<string | null> => {
 export const fetchRepoParticipation = async (repoName: string): Promise<{ all: number[]; owner: number[] } | null> => {
   try {
     const url = `${CONFIG.API_BASE}/repos/${CONFIG.USERNAME}/${repoName}/stats/participation`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: getAuthHeaders() });
     if (response.status === 202) return null; 
     return await handleResponse(response, url);
   } catch { return null; }
@@ -211,9 +234,11 @@ export const getPortfolioData = async (forceRefresh = false): Promise<PortfolioD
 
 export const fetchReadme = async (repoName: string, initialBranch: string = 'main'): Promise<{ content: string; branch: string } | null> => {
   const branches = Array.from(new Set([initialBranch, 'master', 'main'])); 
+  const headers = getAuthHeaders();
+  
   for (const b of branches) {
     try {
-      const response = await fetch(`https://raw.githubusercontent.com/${CONFIG.USERNAME}/${repoName}/${b}/README.md`);
+      const response = await fetch(`https://raw.githubusercontent.com/${CONFIG.USERNAME}/${repoName}/${b}/README.md`, { headers });
       if (response.ok) return { content: await response.text(), branch: b };
     } catch { continue; }
   }
