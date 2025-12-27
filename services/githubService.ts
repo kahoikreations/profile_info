@@ -72,41 +72,24 @@ const handleResponse = async (response: Response, url: string) => {
 
   if (!response.ok) {
     if (response.status === 403 || response.status === 429) {
-      const retryAfter = response.headers.get('retry-after');
       const resetHeader = response.headers.get('x-ratelimit-reset');
-      
-      let resetTime: number;
-      if (retryAfter) {
-        resetTime = Math.floor(Date.now() / 1000) + parseInt(retryAfter, 10);
-      } else if (resetHeader) {
-        resetTime = parseInt(resetHeader, 10);
-      } else {
-        resetTime = Math.floor(Date.now() / 1000) + 60;
-      }
-      
+      const resetTime = resetHeader ? parseInt(resetHeader, 10) : Math.floor(Date.now() / 1000) + 60;
       throw new RateLimitError('The Barista is on break (Rate Limit Reached)', resetTime);
     }
-    console.warn(`API Error ${response.status} at ${url}`);
     return null;
   }
 
   const data = await response.json();
   const etag = response.headers.get('etag');
-  if (etag) {
-    saveToETagCache(url, etag, data);
-  }
+  if (etag) saveToETagCache(url, etag, data);
   return data;
 };
 
 const fetchWithETag = async (url: string) => {
   const cache = getETagCache();
   const cachedItem = cache[url];
-  
   const headers: Record<string, string> = {};
-  if (cachedItem?.etag) {
-    headers['if-none-match'] = cachedItem.etag;
-  }
-
+  if (cachedItem?.etag) headers['if-none-match'] = cachedItem.etag;
   const response = await fetch(url, { headers });
   return handleResponse(response, url);
 };
@@ -115,7 +98,6 @@ const fetchPinnedRepos = async (): Promise<GitHubRepo[]> => {
   try {
     const response = await fetch(`${CONFIG.PINNED_API}/${CONFIG.USERNAME}`);
     if (!response.ok) return [];
-    
     const pinned = await response.json();
     if (!Array.isArray(pinned)) return [];
 
@@ -128,7 +110,7 @@ const fetchPinnedRepos = async (): Promise<GitHubRepo[]> => {
       language: repo.language,
       stargazers_count: repo.stars,
       forks_count: repo.forks,
-      open_issues_count: 0, // Pinned API doesn't provide this, but we'll sync with REST repos later
+      open_issues_count: 0,
       updated_at: new Date().toISOString(),
       topics: [],
       clone_url: `https://github.com/${repo.author}/${repo.name}.git`,
@@ -197,7 +179,6 @@ export const getPortfolioData = async (forceRefresh = false): Promise<PortfolioD
   const user = userData as GitHubUser;
   const rawRepos = (reposData || []) as any[];
   
-  // Map regular repos to include repoImage and open_issues_count
   const repos: GitHubRepo[] = rawRepos.map(r => ({
     ...r,
     repoImage: `https://opengraph.githubassets.com/1/${r.full_name}`,
@@ -206,7 +187,7 @@ export const getPortfolioData = async (forceRefresh = false): Promise<PortfolioD
 
   const followers = (followersData || []) as GitHubUser[];
 
-  // Sync pinned repos with real issue counts from the repos list if possible
+  // Sync pinned repos with real issue counts and stats from the full list
   const pinnedRepos: GitHubRepo[] = pinnedReposData.map(p => {
     const fullRepo = repos.find(r => r.name === p.name);
     return fullRepo ? { ...fullRepo, repoImage: p.repoImage } : p;
