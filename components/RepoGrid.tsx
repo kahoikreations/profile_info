@@ -1,108 +1,104 @@
+
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, FlaskConical, Clock, Star, ChevronDown, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Coffee, Sparkles, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { GitHubRepo } from '../types';
 import RepoCard from './RepoCard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface RepoGridProps {
   repos: GitHubRepo[];
   pinnedRepos: GitHubRepo[];
+  tags: Record<string, string>;
 }
 
-const RepoGrid: React.FC<RepoGridProps> = ({ repos, pinnedRepos }) => {
+const ITEMS_PER_PAGE = 10;
+
+const RepoGrid: React.FC<RepoGridProps> = ({ repos, pinnedRepos, tags }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [languageFilter, setLanguageFilter] = useState('All');
+  const [selectedLang, setSelectedLang] = useState<string>('All Roasts');
+  const [currentPage, setCurrentPage] = useState(1);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Extract unique languages from all repos
   const languages = useMemo(() => {
-    const langs = new Set([...repos, ...pinnedRepos].map(r => r.language).filter(Boolean));
-    return ['All', ...Array.from(langs).sort()];
-  }, [repos, pinnedRepos]);
+    const langs = new Set<string>(['All Roasts']);
+    repos.forEach(r => { if (r.language) langs.add(r.language); });
+    return Array.from(langs);
+  }, [repos]);
 
-  const filterRepo = (repo: GitHubRepo) => {
-      const matchesSearch = repo.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            (repo.description && repo.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesLang = languageFilter === 'All' || repo.language === languageFilter;
-      return matchesSearch && matchesLang;
+  const filteredOthers = useMemo(() => {
+    return repos
+      .filter(r => !pinnedRepos.some(p => p.name === r.name))
+      .filter(repo => {
+        const matchesSearch = repo.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                             (repo.description && repo.description.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesLang = selectedLang === 'All Roasts' || repo.language === selectedLang;
+        return matchesSearch && matchesLang;
+      });
+  }, [repos, pinnedRepos, searchTerm, selectedLang]);
+
+  const totalPages = Math.ceil(filteredOthers.length / ITEMS_PER_PAGE);
+  const currentRepos = filteredOthers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  const handleLangChange = (lang: string) => {
+    setSelectedLang(lang);
+    setCurrentPage(1);
+    setIsFilterOpen(false);
   };
 
-  const filteredPinned = pinnedRepos.filter(filterRepo);
-  const filteredOthers = repos.filter(r => !pinnedRepos.some(p => p.name === r.name)).filter(filterRepo);
-
-  const brewingProjects = [
-    { title: "Espresso AI", desc: "A neural network that predicts the perfect grind size." },
-    { title: "Latte Layouts", desc: "CSS framework based entirely on coffee art patterns." },
-    { title: "Bean Counter", desc: "Blockchain-based inventory management for roasters." }
-  ];
-
   return (
-    <section id="repos" className="py-12 sm:py-16 bg-white dark:bg-coffee-950 rounded-t-[2rem] sm:rounded-t-[3rem] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] min-h-screen relative z-10 transition-colors duration-500">
+    <section id="repos" className="py-24 bg-white dark:bg-coffee-950 rounded-t-[5rem] shadow-[0_-20px_80px_-20px_rgba(0,0,0,0.1)] relative z-10 -mt-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        <div className="flex flex-col md:flex-row justify-between items-end mb-10 sm:mb-12 gap-6">
-            <div className="w-full md:w-auto">
-                <h2 className="text-3xl sm:text-4xl font-display font-bold text-coffee-900 dark:text-coffee-100 flex items-center gap-3">
-                    <span className="bg-coffee-100 dark:bg-coffee-800 p-2 rounded-xl text-2xl sm:text-3xl shadow-sm">📦</span>
-                    The Code Pantry
+        <div className="flex flex-col md:flex-row justify-between items-start mb-16 gap-10">
+            <div className="text-center md:text-left">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-coffee-100 dark:bg-coffee-900 text-coffee-700 dark:text-coffee-300 rounded-full text-xs font-black uppercase tracking-tighter mb-4">
+                  <Sparkles size={14} />
+                  <span>Curated Collections</span>
+                </div>
+                <h2 className="text-5xl sm:text-6xl font-display font-black text-coffee-950 dark:text-coffee-50 tracking-tight leading-none">
+                    The Archive
                 </h2>
-                <p className="mt-2 text-coffee-600 dark:text-coffee-400 text-sm sm:text-base">Freshly brewed open source contributions.</p>
+                <p className="mt-4 text-coffee-500 dark:text-coffee-400 text-lg font-serif italic">Every batch of code, roasted to perfection.</p>
             </div>
 
-            {/* Controls */}
-            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-stretch sm:items-center">
-                
-                {/* Search */}
-                <div className="relative group w-full sm:w-auto">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Search size={18} className="text-coffee-400 group-focus-within:text-coffee-600 dark:group-focus-within:text-coffee-300" />
-                    </div>
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                <div className="relative w-full md:w-80 group">
+                    <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-coffee-400 group-focus-within:text-coffee-800 transition-colors" />
                     <input
                         type="text"
-                        placeholder="Search projects..."
+                        placeholder="Search specific roasts..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 pr-4 py-2.5 w-full sm:w-64 border border-coffee-200 dark:border-coffee-700 rounded-xl focus:ring-2 focus:ring-coffee-400 focus:border-coffee-400 outline-none transition-all bg-coffee-50 dark:bg-coffee-900 placeholder-coffee-300 dark:placeholder-coffee-600 text-coffee-800 dark:text-coffee-200 shadow-inner"
+                        className="w-full pl-12 pr-8 py-3.5 bg-coffee-50 dark:bg-coffee-900 border-2 border-transparent focus:border-coffee-200 dark:focus:border-coffee-800 rounded-2xl outline-none transition-all dark:text-white font-medium text-sm"
                     />
                 </div>
 
-                {/* Animated Filter Button & Dropdown */}
-                <div className="relative w-full sm:w-auto">
+                <div className="relative">
                     <button 
                         onClick={() => setIsFilterOpen(!isFilterOpen)}
-                        className="flex items-center justify-between w-full sm:w-48 px-4 py-2.5 bg-coffee-50 dark:bg-coffee-900 border border-coffee-200 dark:border-coffee-700 rounded-xl text-coffee-800 dark:text-coffee-200 focus:outline-none hover:bg-coffee-100 dark:hover:bg-coffee-800 transition-colors"
+                        className="w-full sm:w-48 px-6 py-3.5 bg-coffee-800 dark:bg-coffee-100 text-white dark:text-coffee-900 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-between gap-2 shadow-lg"
                     >
-                        <div className="flex items-center gap-2">
-                            <Filter size={18} className="text-coffee-400" />
-                            <span className="truncate">{languageFilter}</span>
-                        </div>
-                        {isFilterOpen ? <X size={16} /> : <ChevronDown size={16} />}
+                        <span>{selectedLang}</span>
+                        <ChevronDown size={16} className={`transition-transform duration-300 ${isFilterOpen ? 'rotate-180' : ''}`} />
                     </button>
-
+                    
                     <AnimatePresence>
                         {isFilterOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10, height: 0 }}
-                                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                                exit={{ opacity: 0, y: -10, height: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="absolute top-full mt-2 w-full sm:w-48 bg-white dark:bg-coffee-900 border border-coffee-200 dark:border-coffee-700 rounded-xl shadow-lg z-30 overflow-hidden"
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-coffee-900 border border-coffee-200 dark:border-coffee-800 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto no-scrollbar"
                             >
-                                <div className="max-h-60 overflow-y-auto py-1 custom-scrollbar">
-                                    {languages.map(lang => (
-                                        <button
-                                            key={lang}
-                                            onClick={() => { setLanguageFilter(lang); setIsFilterOpen(false); }}
-                                            className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-coffee-50 dark:hover:bg-coffee-800 ${
-                                                languageFilter === lang 
-                                                ? 'text-coffee-800 dark:text-coffee-100 font-bold bg-coffee-50 dark:bg-coffee-800' 
-                                                : 'text-coffee-600 dark:text-coffee-400'
-                                            }`}
-                                        >
-                                            {lang}
-                                        </button>
-                                    ))}
-                                </div>
+                                {languages.map(lang => (
+                                    <button
+                                        key={lang}
+                                        onClick={() => handleLangChange(lang)}
+                                        className="w-full text-left px-6 py-3 text-xs font-black uppercase tracking-widest hover:bg-coffee-50 dark:hover:bg-coffee-800 transition-colors text-coffee-700 dark:text-coffee-300"
+                                    >
+                                        {lang}
+                                    </button>
+                                ))}
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -110,72 +106,71 @@ const RepoGrid: React.FC<RepoGridProps> = ({ repos, pinnedRepos }) => {
             </div>
         </div>
 
-        {/* Signature Blends (Pinned) */}
-        {filteredPinned.length > 0 && (
-            <div className="mb-12 sm:mb-16">
-                <h3 className="text-xl sm:text-2xl font-display font-bold text-coffee-800 dark:text-coffee-200 mb-4 sm:mb-6 flex items-center gap-2">
-                    <Star className="fill-coffee-500 text-coffee-500" /> Signature Blends
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                    {filteredPinned.map(repo => (
-                        <RepoCard key={`pin-${repo.name}`} repo={repo} isPinned={true} />
-                    ))}
-                </div>
+        {currentPage === 1 && pinnedRepos.length > 0 && selectedLang === 'All Roasts' && searchTerm === '' && (
+          <div className="mb-20">
+            <div className="flex items-center gap-4 mb-10">
+              <h3 className="text-sm font-black uppercase tracking-[0.4em] text-coffee-400">Signature Series</h3>
+              <div className="h-px flex-1 bg-coffee-100 dark:bg-coffee-900" />
             </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              {pinnedRepos.map(repo => (
+                  <RepoCard key={`pin-${repo.name}`} repo={repo} isPinned={true} tag={tags[repo.name]} />
+              ))}
+            </div>
+          </div>
         )}
 
-        {/* Other Repos */}
-        {filteredOthers.length > 0 && (
-            <div className="mb-12 sm:mb-16">
-                 <h3 className="text-lg sm:text-xl font-display font-bold text-coffee-700 dark:text-coffee-300 mb-4 sm:mb-6 flex items-center gap-2">
-                    <FlaskConical className="text-coffee-400" /> Experimental Batches
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredOthers.map(repo => (
-                        <RepoCard key={repo.id} repo={repo} />
-                    ))}
-                </div>
-            </div>
-        )}
-
-        {/* No Results */}
-        {filteredPinned.length === 0 && filteredOthers.length === 0 && (
-            <div className="text-center py-20 text-coffee-400 dark:text-coffee-600">
-                <p className="text-xl">No blends found matching your taste.</p>
-                <button 
-                    onClick={() => { setSearchTerm(''); setLanguageFilter('All'); }}
-                    className="mt-4 text-coffee-600 dark:text-coffee-300 underline hover:text-coffee-800 dark:hover:text-white"
-                >
-                    Clear filters
-                </button>
-            </div>
-        )}
-
-        {/* Brewing Soon Section */}
-        <div className="mt-16 sm:mt-20 border-t-2 border-dashed border-coffee-200 dark:border-coffee-800 pt-12 sm:pt-16">
-             <div className="text-center mb-8 sm:mb-10">
-                <h2 className="text-2xl sm:text-3xl font-display font-bold text-coffee-800 dark:text-coffee-100 inline-flex items-center gap-3">
-                    <Clock className="text-coffee-500 animate-pulse" size={32} />
-                    Brewing Soon
-                </h2>
-                <p className="text-coffee-500 dark:text-coffee-400 mt-2 text-sm sm:text-base">Experimental roasts currently in development.</p>
-             </div>
-             
-             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {brewingProjects.map((proj, idx) => (
-                    <div key={idx} className="bg-coffee-50 dark:bg-coffee-900 rounded-xl p-6 border border-coffee-100 dark:border-coffee-800 flex flex-col items-center text-center opacity-80 hover:opacity-100 transition-opacity">
-                        <div className="w-12 h-12 bg-coffee-200 dark:bg-coffee-800 rounded-full flex items-center justify-center mb-4">
-                            <span className="text-2xl animate-bounce" style={{ animationDelay: `${idx * 0.2}s` }}>☕</span>
-                        </div>
-                        <h4 className="font-display font-bold text-lg text-coffee-800 dark:text-coffee-200">{proj.title}</h4>
-                        <p className="text-sm text-coffee-600 dark:text-coffee-400 mt-2">{proj.desc}</p>
-                        <div className="mt-4 text-xs font-bold text-coffee-400 uppercase tracking-widest bg-coffee-100 dark:bg-coffee-800 px-2 py-1 rounded">
-                            Steeping...
-                        </div>
-                    </div>
+        <div className="mb-12">
+          <div className="flex items-center gap-4 mb-10">
+            <h3 className="text-sm font-black uppercase tracking-[0.4em] text-coffee-400">Seasonal Blends</h3>
+            <div className="h-px flex-1 bg-coffee-100 dark:bg-coffee-900" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-10">
+              <AnimatePresence mode="popLayout">
+                {currentRepos.map((repo, idx) => (
+                    <motion.div
+                      key={repo.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ delay: idx * 0.05 }}
+                    >
+                      <RepoCard repo={repo} tag={tags[repo.name]} />
+                    </motion.div>
                 ))}
-             </div>
+              </AnimatePresence>
+          </div>
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-8 py-12">
+            <button 
+              disabled={currentPage === 1}
+              onClick={() => { setCurrentPage(p => p - 1); window.scrollTo({top: 0, behavior: 'smooth'}); }}
+              className="p-4 bg-coffee-100 dark:bg-coffee-900 text-coffee-800 dark:text-coffee-200 rounded-full disabled:opacity-30 hover:scale-110 transition-all shadow-md"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <div className="text-center font-display">
+                <span className="text-2xl font-black text-coffee-900 dark:text-coffee-100">{currentPage}</span>
+                <span className="mx-2 text-coffee-300">/</span>
+                <span className="text-2xl font-black text-coffee-400">{totalPages}</span>
+            </div>
+            <button 
+              disabled={currentPage === totalPages}
+              onClick={() => { setCurrentPage(p => p + 1); window.scrollTo({top: 0, behavior: 'smooth'}); }}
+              className="p-4 bg-coffee-100 dark:bg-coffee-900 text-coffee-800 dark:text-coffee-200 rounded-full disabled:opacity-30 hover:scale-110 transition-all shadow-md"
+            >
+              <ChevronRight size={24} />
+            </button>
+          </div>
+        )}
+
+        {filteredOthers.length === 0 && (
+          <div className="text-center py-40">
+             <p className="text-xl font-display text-coffee-400 uppercase tracking-widest font-black">Cellar search returned no matches.</p>
+          </div>
+        )}
       </div>
     </section>
   );

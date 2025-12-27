@@ -1,3 +1,4 @@
+
 export interface GitHubUser {
   id: number;
   login: string;
@@ -24,6 +25,15 @@ export interface GitHubRepo {
   topics: string[];
   clone_url: string;
   default_branch: string;
+}
+
+export interface CoffeeStats {
+  totalStars: number;
+  totalForks: number;
+  topLanguages: { lang: string; count: number }[];
+  mostStarredRepo: string;
+  accountAgeDays: number;
+  brewStrength: string;
 }
 
 export interface CoffeeAnalysis {

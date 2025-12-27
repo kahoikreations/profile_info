@@ -1,14 +1,11 @@
-import { GitHubRepo, GitHubUser } from '../types';
 
-// ARCHITECTURE CONFIGURATION
+import { GitHubRepo, GitHubUser, CoffeeStats } from '../types';
+
 const CONFIG = {
   USERNAME: 'pro-grammer-SD',
-  // In production, this should point to a backend proxy (e.g., '/api/github')
-  // to enforce server-side caching and request deduplication.
   API_BASE: 'https://api.github.com',
-  STATIC_SNAPSHOT_URL: '/github_data.json', // CI/CD generated snapshot
-  CACHE_KEY: 'gh_portfolio_v2',
-  CACHE_TTL: 60 * 60 * 1000, // 60 Minutes
+  CACHE_KEY: 'gh_portfolio_v4',
+  CACHE_TTL: 60 * 60 * 1000,
 };
 
 export class RateLimitError extends Error {
@@ -25,33 +22,25 @@ interface PortfolioData {
   repos: GitHubRepo[];
   pinnedRepos: GitHubRepo[];
   followers: GitHubUser[];
+  tags: Record<string, string>;
+  stats: CoffeeStats;
   timestamp: number;
 }
-
-// --- Internal Utilities ---
 
 const getCache = (): PortfolioData | null => {
   try {
     const raw = localStorage.getItem(CONFIG.CACHE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    if (Date.now() - data.timestamp > CONFIG.CACHE_TTL) {
-      localStorage.removeItem(CONFIG.CACHE_KEY);
-      return null;
-    }
+    if (Date.now() - data.timestamp > CONFIG.CACHE_TTL) return null;
     return data;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 };
 
 const setCache = (data: Omit<PortfolioData, 'timestamp'>) => {
   try {
-    const payload = { ...data, timestamp: Date.now() };
-    localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify(payload));
-  } catch (e) {
-    console.warn('Cache quota exceeded', e);
-  }
+    localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({ ...data, timestamp: Date.now() }));
+  } catch (e) { console.warn('Cache quota exceeded', e); }
 };
 
 const handleResponse = async (response: Response) => {
@@ -61,169 +50,107 @@ const handleResponse = async (response: Response) => {
       const resetTime = resetHeader ? parseInt(resetHeader, 10) : Math.floor(Date.now() / 1000) + 3600;
       throw new RateLimitError('API Rate Limit Exceeded', resetTime);
     }
-    throw new Error(`GitHub API Error: ${response.statusText}`);
+    return null;
   }
   return response.json();
 };
 
-// --- Individual Fetchers (Internal) ---
-
-const fetchProfile = async (): Promise<GitHubUser> => {
-  const response = await fetch(`${CONFIG.API_BASE}/users/${CONFIG.USERNAME}`);
-  return handleResponse(response);
-};
-
-const fetchRepos = async (): Promise<GitHubRepo[]> => {
-  const response = await fetch(`${CONFIG.API_BASE}/users/${CONFIG.USERNAME}/repos?sort=updated&per_page=100`);
-  return handleResponse(response);
-};
-
-const fetchPinnedRepos = async (): Promise<GitHubRepo[]> => {
-  // Strategy: Try 3rd party, then fallback to API
+const fetchTags = async (repoName: string): Promise<string | null> => {
   try {
-    const response = await fetch(`https://gh-pinned-repos.egoist.dev/?username=${CONFIG.USERNAME}`);
-    if (response.ok) {
-      const pinnedData = await response.json();
-      if (Array.isArray(pinnedData) && pinnedData.length > 0) {
-        return pinnedData.map((pin: any, index: number) => ({
-          id: 999000 + index,
-          name: pin.repo,
-          full_name: `${pin.owner}/${pin.repo}`,
-          html_url: pin.link,
-          description: pin.description,
-          language: pin.language,
-          stargazers_count: parseInt(pin.stars) || 0,
-          forks_count: parseInt(pin.forks) || 0,
-          updated_at: new Date().toISOString(),
-          clone_url: `https://github.com/${pin.owner}/${pin.repo}.git`,
-          default_branch: 'main',
-          topics: []
-        }));
-      }
-    }
-  } catch (e) {
-    console.warn("Pinned proxy failed", e);
+    const response = await fetch(`${CONFIG.API_BASE}/repos/${CONFIG.USERNAME}/${repoName}/tags?per_page=1`);
+    const tags = await handleResponse(response);
+    return tags?.[0]?.name || null;
+  } catch { return null; }
+};
+
+export const fetchRepoParticipation = async (repoName: string): Promise<{ all: number[]; owner: number[] } | null> => {
+  try {
+    const response = await fetch(`${CONFIG.API_BASE}/repos/${CONFIG.USERNAME}/${repoName}/stats/participation`);
+    if (response.status === 202) return null; // GitHub is calculating stats
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
   }
-  // Fallback
-  const response = await fetch(`${CONFIG.API_BASE}/users/${CONFIG.USERNAME}/repos?sort=stargazers_count&direction=desc&per_page=6`);
-  return handleResponse(response);
 };
 
-const fetchFollowers = async (): Promise<GitHubUser[]> => {
-  // Lite fetch: minimal data to save bandwidth and secondary calls
-  const response = await fetch(`${CONFIG.API_BASE}/users/${CONFIG.USERNAME}/followers?per_page=12`);
-  const simpleUsers = await handleResponse(response);
-  return simpleUsers.map((u: any) => ({
-    id: u.id,
-    login: u.login,
-    avatar_url: u.avatar_url,
-    html_url: u.html_url,
-    name: u.login,
-    bio: "Coffee Club Member",
-    public_repos: 0,
-    followers: 0,
-    following: 0,
-    created_at: new Date().toISOString()
-  }));
-};
+const calculateStats = (user: GitHubUser, repos: GitHubRepo[]): CoffeeStats => {
+  const totalStars = repos.reduce((acc, r) => acc + (r.stargazers_count || 0), 0);
+  const totalForks = repos.reduce((acc, r) => acc + (r.forks_count || 0), 0);
+  
+  const langs: Record<string, number> = {};
+  repos.forEach(r => {
+    if (r.language) langs[r.language] = (langs[r.language] || 0) + 1;
+  });
+  
+  const topLanguages = Object.entries(langs)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([lang, count]) => ({ lang, count }));
 
-// --- Main Service Method ---
+  const mostStarredRepo = repos.length > 0 ? [...repos].sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0))[0].name : 'N/A';
+  
+  const accountAgeDays = Math.floor((Date.now() - new Date(user.created_at || Date.now()).getTime()) / (1000 * 60 * 60 * 24));
+  
+  const brewStrength = totalStars > 500 ? 'Double Espresso' : totalStars > 100 ? 'Ristretto' : 'Mild Roast';
+
+  return { totalStars, totalForks, topLanguages, mostStarredRepo, accountAgeDays, brewStrength };
+};
 
 export const getPortfolioData = async (forceRefresh = false): Promise<PortfolioData> => {
-  // 1. Check Local Cache (Level 1 Defense)
   if (!forceRefresh) {
     const cached = getCache();
     if (cached) return cached;
   }
 
-  // 2. Try Static Snapshot (Level 2 Defense - CI/CD Generated)
-  try {
-    const snapshot = await fetch(CONFIG.STATIC_SNAPSHOT_URL);
-    if (snapshot.ok) {
-      const data: PortfolioData = await snapshot.json();
-      // Validate snapshot freshness if needed, or just use it
-      setCache(data);
-      return data;
-    }
-  } catch (e) {
-    // Snapshot missing, proceed to network
-  }
+  const [userData, reposData, followersData] = await Promise.all([
+    fetch(`${CONFIG.API_BASE}/users/${CONFIG.USERNAME}`).then(handleResponse),
+    fetch(`${CONFIG.API_BASE}/users/${CONFIG.USERNAME}/repos?sort=updated&per_page=100`).then(handleResponse),
+    fetch(`${CONFIG.API_BASE}/users/${CONFIG.USERNAME}/followers?per_page=100`).then(handleResponse)
+  ]);
 
-  // 3. Network Fetch (Level 3 - The API)
-  // Use Promise.all to fetch concurrently but safely
-  try {
-    const [user, repos, pinnedRepos, followers] = await Promise.all([
-      fetchProfile(),
-      fetchRepos(),
-      fetchPinnedRepos(),
-      fetchFollowers()
-    ]);
+  if (!userData) throw new Error("Could not fetch GitHub user. Check your connection or username.");
 
-    const data = { user, repos, pinnedRepos, followers };
-    setCache(data);
-    return { ...data, timestamp: Date.now() };
+  const user = userData as GitHubUser;
+  const repos = (reposData || []) as GitHubRepo[];
+  const followers = (followersData || []) as GitHubUser[];
 
-  } catch (error) {
-    // If rate limited, try to return stale cache even if expired
-    if (error instanceof RateLimitError) {
-       const staleRaw = localStorage.getItem(CONFIG.CACHE_KEY);
-       if (staleRaw) {
-         console.warn("Rate limit hit, serving stale cache.");
-         return JSON.parse(staleRaw);
-       }
-    }
-    throw error;
-  }
+  const pinnedRepos = await fetch(`https://gh-pinned-repos.egoist.dev/?username=${CONFIG.USERNAME}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(pins => Array.isArray(pins) ? pins.map((p: any, i: number) => ({
+        id: 999000 + i, name: p.repo, full_name: `${p.owner}/${p.repo}`,
+        html_url: p.link, description: p.description, language: p.language,
+        stargazers_count: parseInt(p.stars) || 0, forks_count: parseInt(p.forks) || 0,
+        updated_at: new Date().toISOString(), clone_url: `https://github.com/${p.owner}/${p.repo}.git`,
+        default_branch: 'main', topics: []
+      })) : []);
+
+  const reposToTag = [...pinnedRepos, ...repos.slice(0, 5)];
+  const tagEntries = await Promise.all(
+    reposToTag.map(async (r) => [r.name, await fetchTags(r.name)])
+  );
+  const tags = Object.fromEntries(tagEntries.filter(e => e[1]));
+  const stats = calculateStats(user, repos);
+
+  const data = { user, repos, pinnedRepos, followers, tags, stats };
+  setCache(data);
+  return { ...data, timestamp: Date.now() };
 };
 
-// --- Helper Methods ---
-
-// Uses raw.githubusercontent.com - Does not consume API Rate Limit
 export const fetchReadme = async (repoName: string, initialBranch: string = 'main'): Promise<{ content: string; branch: string } | null> => {
-  // Deduplicate branches while keeping preference order
   const branches = Array.from(new Set([initialBranch, 'master', 'main'])); 
-  
   for (const b of branches) {
-    const url = `https://raw.githubusercontent.com/${CONFIG.USERNAME}/${repoName}/${b}/README.md`;
     try {
-      const response = await fetch(url);
-      if (response.ok) {
-          return {
-              content: await response.text(),
-              branch: b
-          };
-      }
-    } catch (e) { continue; }
+      const response = await fetch(`https://raw.githubusercontent.com/${CONFIG.USERNAME}/${repoName}/${b}/README.md`);
+      if (response.ok) return { content: await response.text(), branch: b };
+    } catch { continue; }
   }
   return null;
 };
 
 export const analyzeRepo = (repo: GitHubRepo): { roast: string; description: string } => {
-  // Same logic as before, purely client-side
   const lang = repo.language || 'Unknown';
-  const stars = repo.stargazers_count;
-  const forks = repo.forks_count;
-  let score = stars * 3 + forks * 2;
-  if (repo.description && repo.description.length > 50) score += 5;
-  if (repo.topics && repo.topics.length > 0) score += 5;
-
-  let roast = 'Light Roast';
-  let descTemplate = 0;
-
-  if (score < 5) { roast = 'Light Roast'; descTemplate = 0; }
-  else if (score >= 5 && score < 20) { roast = 'Medium Roast'; descTemplate = 1; }
-  else if (score >= 20 && score < 50) { roast = 'Dark Roast'; descTemplate = 2; }
-  else if (score >= 50 && score < 100) { roast = 'Espresso Blend'; descTemplate = 3; }
-  else { roast = 'Double Shot Signature'; descTemplate = 4; }
-
-  const descriptions = [
-    [`A delicate ${lang} brew with subtle notes.`, `Light and airy ${lang} project.`, `Freshly ground ${lang} concepts.`],
-    [`A balanced ${lang} blend.`, `Medium-bodied ${lang} architecture.`, `Classic ${lang} flavor profile.`],
-    [`Bold ${lang} flavors.`, `Deep-roasted ${lang} logic.`, `A robust ${lang} creation.`],
-    [`Intense ${lang} energy.`, `Concentrated ${lang} power.`, `High-caffeine ${lang} solution.`],
-    [`The Master's Reserve: Premium ${lang}.`, `Award-winning ${lang} profile.`, `The ultimate ${lang} experience.`]
-  ];
-
-  const tierDescs = descriptions[descTemplate];
-  return { roast, description: tierDescs[repo.id % tierDescs.length] };
+  let score = ((repo.stargazers_count || 0) * 3) + ((repo.forks_count || 0) * 2);
+  const roast = score > 100 ? 'Double Shot Signature' : score > 50 ? 'Espresso Blend' : score > 20 ? 'Dark Roast' : 'Medium Roast';
+  return { roast, description: `A robust ${lang} creation.` };
 };
